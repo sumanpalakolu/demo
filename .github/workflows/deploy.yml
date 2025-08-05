@@ -1,52 +1,101 @@
-name: Deploy to Cloud Run from GitHub Packages
+# Name of your workflow, displayed in the GitHub Actions UI
+name: Deploy Pre-built Docker Image to GCP Cloud Run (Service Account Key) # Name adjusted for clarity
 
 on:
-  push:
-    branches:
-      - main # Trigger on pushes to the main branch
-  workflow_dispatch: 
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag (e.g., latest, main, or a specific SHA)'
+        required: true
+        default: 'main'
+      service_name:
+        description: 'Cloud Run Service Name to deploy to'
+        required: true
+        default: 'gcpdemo' # <<< IMPORTANT: Default Cloud Run service name
 
 env:
-  PROJECT_ID: superb-tendril-454116-i5 # Replace with your Google Cloud Project ID
-  REGION: us-central1 # Replace with your desired Google Cloud region
-  SERVICE_NAME: demo # Replace with your Cloud Run service name
-  # Define the full image URL from GitHub Packages
-  # Format: ghcr.io/<OWNER>/<REPOSITORY_NAME>/<IMAGE_NAME>:<TAG>
-  # Using GITHUB_REPOSITORY for owner/repo and GITHUB_SHA for a unique tag
-  IMAGE_URL: ghcr.io/${{ github.repository }}/${{ github.repository }}:${{ github.sha }}
+  GCP_PROJECT_ID: 'superb-tendril-454116-i5' # <<< IMPORTANT: Replace with your GCP Project ID
+  CLOUD_RUN_REGION: 'us-central1' # <<< IMPORTANT: Choose your Cloud Run region
+  # Ensure these match your GitHub Packages image details
+  GHCR_REGISTRY: ghcr.io
+  GHCR_IMAGE_OWNER: 'sumanpalakolu' # <<< IMPORTANT: Your GitHub username or organization
+  GHCR_IMAGE_NAME: 'demo' # <<< IMPORTANT: Must match the image name from your build workflow
+  # NEW: Artifact Registry Repository details
+  GAR_REGION: 'us-central1' # <<< IMPORTANT: Match your Artifact Registry region
+  GAR_REPO_NAME: 'cloud-run-images' # <<< IMPORTANT: The Artifact Registry repo name you created
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     permissions:
-      contents: read
-      packages: write # Required to pull from GitHub Packages
-      id-token: write # Required for Google Cloud authentication
+      contents: 'read'
+      packages: 'write' # Not needed if you're only pushing to GAR, not GHCR here
+      id-token: 'write' # Only needed for Workload Identity Federation
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      # Step 1: Authenticate to Google Cloud (using service account key)
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
         with:
-          # This secret should contain the JSON key for your GCP Service Account
-          # with Cloud Run Admin and Service Account User roles.
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          credentials_json: '${{ secrets.GCP_SA_KEY }}' # Or workload_identity_provider for WIF
 
-      - name: Log in to GitHub Container Registry (GHCR)
+      # Step 2: Log in to GitHub Container Registry (to pull the image)
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
-          # GITHUB_TOKEN is a special token provided by GitHub Actions for authentication
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Step 3: Get the full Docker image path from GHCR
+      - name: Get GHCR Image Path
+        id: ghcr_image_path
+        run: |
+          GHCR_FULL_IMAGE="${{ env.GHCR_REGISTRY }}/${{ env.GHCR_IMAGE_OWNER }}/${{ env.GHCR_IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+          echo "Full GHCR Docker image path: ${GHCR_FULL_IMAGE}"
+          echo "image_path=${GHCR_FULL_IMAGE}" >> "$GITHUB_OUTPUT"
+
+      # --- NEW STEPS: Pull from GHCR, push to GAR ---
+
+      # Step 4: Configure Docker to use Google Cloud CLI for Artifact Registry
+      - name: Configure Docker to use gcloud as a credential helper
+        run: gcloud auth configure-docker ${{ env.GAR_REGION }}-docker.pkg.dev
+
+      # Step 5: Pull the image from GHCR, tag it for GAR, and push to GAR
+      - name: Copy Docker Image from GHCR to Artifact Registry
+        id: copy_image_to_gar
+        run: |
+          GHCR_IMAGE="${{ steps.ghcr_image_path.outputs.image_path }}"
+          GAR_IMAGE="${{ env.GAR_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPO_NAME }}/${{ env.GHCR_IMAGE_NAME }}:${{ github.event.inputs.image_tag }}"
+
+          echo "Pulling ${GHCR_IMAGE}..."
+          docker pull ${GHCR_IMAGE}
+
+          echo "Tagging ${GHCR_IMAGE} as ${GAR_IMAGE}..."
+          docker tag ${GHCR_IMAGE} ${GAR_IMAGE}
+
+          echo "Pushing ${GAR_IMAGE} to Artifact Registry..."
+          docker push ${GAR_IMAGE}
+
+          echo "gar_image_path=${GAR_IMAGE}" >> "$GITHUB_OUTPUT" # Output for later use
+
+      # Step 6: Deploy to Google Cloud Run
       - name: Deploy to Cloud Run
-        run: |-
-          gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --image ${{ env.IMAGE_URL }} \
-            --region ${{ env.REGION }} \
-            --platform managed \
-            --allow-unauthenticated # Remove this flag if you want to require authentication
-          echo "Cloud Run service deployed at: $(gcloud run services describe ${{ env.SERVICE_NAME }} --region ${{ env.REGION }} --format 'value(status.url)')"
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: ${{ github.event.inputs.service_name }}
+          region: ${{ env.CLOUD_RUN_REGION }}
+          image: ${{ steps.copy_image_to_gar.outputs.gar_image_path }}
+          # Optional: allow unauthenticated invocations
+          # allow_unauthenticated: true
+
+      # Step 7: Get Cloud Run service URL (optional)
+      - name: Show Cloud Run Service URL
+        run: |
+          echo "Deployment successful to Cloud Run service: ${{ github.event.inputs.service_name }}"
+          echo "Access URL: https://${{ env.CLOUD_RUN_REGION }}-run.googleapis.com/v1/projects/${{ env.GCP_PROJECT_ID }}/locations/${{ env.CLOUD_RUN_REGION }}/services/${{ github.event.inputs.service_name }}"
