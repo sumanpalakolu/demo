@@ -14,7 +14,7 @@ on:
 env:
   JAVA_VERSION: '17' # Specify your Java version
   GRADLE_VERSION: '8.7' # Specify your Gradle version
-  IMAGE_NAME: 'gcpdemo' # Replace with your desired Docker image name
+  IMAGE_NAME: 'demo' # Replace with your desired Docker image name
   REGISTRY: ghcr.io # GitHub Container Registry hostname
 
 jobs:
