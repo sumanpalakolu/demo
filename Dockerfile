@@ -53,4 +53,4 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 # Optional: Add a non-root user for enhanced security (recommended for production)
 # Create a group and user, then switch to that user.
 # RUN groupadd --system appgroup && useradd --system --gid appgroup appuser
-# USER appuser
+
