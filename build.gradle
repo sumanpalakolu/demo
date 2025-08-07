@@ -1,43 +1,28 @@
 plugins {
-    id 'java'
-    id 'org.springframework.boot' version '3.2.5' // Use a recent stable Spring Boot version
-    id 'io.spring.dependency-management' version '1.1.4'
+	id 'java'
+	id 'org.springframework.boot' version '3.5.4'
+	id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    sourceCompatibility = '17'
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
 }
 
 repositories {
-    mavenCentral()
+	mavenCentral()
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'com.google.cloud:spring-cloud-gcp-starter-sql-postgresql'
-    // If using MySQL, use:
-    // implementation 'com.google.cloud:spring-cloud-gcp-starter-sql-mysql'
-    runtimeOnly 'org.postgresql:postgresql'
-    // If using MySQL, use:
-    // runtimeOnly 'com.mysql:mysql-connector-j'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-}
-
-dependencyManagement {
-    imports {
-        mavenBom "com.google.cloud:spring-cloud-gcp-dependencies:5.1.0" // Use a recent stable version
-    }
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
-}
-
-// Task to create a bootable JAR
-bootJar {
-    archiveFileName = "${project.name}-${version}.jar"
+	useJUnitPlatform()
 }
