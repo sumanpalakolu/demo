@@ -18,6 +18,9 @@ env:
   CLOUD_RUN_REGION: 'us-central1' # <<< IMPORTANT: Choose your Cloud Run region
   # Ensure these match your GitHub Packages image details
   GHCR_REGISTRY: ghcr.io
+  GKE_CLUSTER_NAME: spalakolu-cluster1
+  GKE_CLUSTER_ZONE: 'us-central1'
+  
   GHCR_IMAGE_OWNER: 'sumanpalakolu' # <<< IMPORTANT: Your GitHub username or organization
   GHCR_IMAGE_NAME: 'demo' # <<< IMPORTANT: Must match the image name from your build workflow
   # NEW: Artifact Registry Repository details
@@ -83,24 +86,26 @@ jobs:
           docker push ${GAR_IMAGE}
 
           echo "gar_image_path=${GAR_IMAGE}" >> "$GITHUB_OUTPUT" # Output for later use
-
-      # Step 6: Deploy to Google Cloud Run
-      - name: Deploy to Cloud Run
-        uses: 'google-github-actions/deploy-cloudrun@v2'
+      - name: 'Get GKE Credentials'
+        uses: 'google-github-actions/get-gke-credentials@v2'
         with:
-          service: ${{ github.event.inputs.service_name }}
-          region: ${{ env.CLOUD_RUN_REGION }}
-          image: ${{ steps.copy_image_to_gar.outputs.gar_image_path }}
-          #env_vars: |-
-            #SPRING_DATASOURCE_USERNAME=sm://${{ env.PROJECT_ID }}/db-username
-            #SPRING_DATASOURCE_PASSWORD=sm://${{ env.PROJECT_ID }}/db-password
-            #SPRING_CLOUD_GCP_SQL_INSTANCE_CONNECTION_NAME=sm://${{ env.PROJECT_ID }}/cloudsql-connection-name
-            #SPRING_CLOUD_GCP_SQL_DATABASE_NAME=sm://${{ env.PROJECT_ID }}/db-name
-          # Optional: allow unauthenticated invocations
-          # allow_unauthenticated: true
+          cluster_name: ${{ env.GKE_CLUSTER_NAME }}
+          location: ${{ env.GKE_CLUSTER_ZONE }}
 
-      # Step 7: Get Cloud Run service URL (optional)
-      - name: Show Cloud Run Service URL
+      # Step 6: Update the Kubernetes deployment manifest with the new image tag.
+      # This ensures you're deploying the exact image that was just pushed.
+      - name: 'Update K8s Manifest'
         run: |
-          echo "Deployment successful to Cloud Run service: ${{ github.event.inputs.service_name }}"
-          echo "Access URL: https://${{ env.CLOUD_RUN_REGION }}-run.googleapis.com/v1/projects/${{ env.GCP_PROJECT_ID }}/locations/${{ env.CLOUD_RUN_REGION }}/services/${{ github.event.inputs.service_name }}"
+          sed -i "s|<YOUR_IMAGE_URI>|${{ steps.copy_image_to_gar.outputs.gar_image_path }}|g" k8s/deployment.yaml
+
+      # Step 7: Apply the Kubernetes manifests to deploy the application.
+      - name: 'Deploy to GKE'
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          echo "Deployment and Service applied. Check GKE to see the status."
+
+      # Step 8: Optional - Wait for the deployment rollout to complete.
+      - name: 'Wait for Deployment Rollout'
+        run: |
+          kubectl rollout status deployment/${{ env.IMAGE_NAME }} --timeout=5m

@@ -1,0 +1,39 @@
+# This Kubernetes manifest defines a Deployment for a Spring Boot application.
+# It tells GKE how to run your application's containers.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+  labels:
+    app: demo
+spec:
+  replicas: 2 # You can change the number of replicas as needed.
+  selector:
+    matchLabels:
+      app: demo
+  template:
+    metadata:
+      labels:
+        app: demo
+    spec:
+      containers:
+      - name: demo
+        # This is the path to your Docker image in GCP Artifact Registry.
+        # Make sure to replace <GCP_REGION>, <PROJECT_ID>, <IMAGE_NAME>, and <TAG>
+        image: us-central1-docker.pkg.dev/superb-tendril-454116-i5/cloud-run-images/demo:latest
+        ports:
+        - containerPort: 8080 # The port your Spring Boot app listens on.
+        # It's a good practice to add readiness and liveness probes for health checks.
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness # Assumes you have Spring Boot Actuator enabled.
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
