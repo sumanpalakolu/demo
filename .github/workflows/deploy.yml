@@ -105,7 +105,7 @@ jobs:
           kubectl apply -f k8s/service.yaml
           echo "Deployment and Service applied. Check GKE to see the status."
 
-      # Step 8: Optional - Wait for the deployment rollout to complete.
+      
       - name: 'Wait for Deployment Rollout'
         run: |
           kubectl rollout status deployment/${{ env.IMAGE_NAME }} --timeout=5m
