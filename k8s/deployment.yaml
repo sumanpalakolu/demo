@@ -21,7 +21,7 @@ spec:
       - name: demo
         # This is the path to your Docker image in GCP Artifact Registry.
         # Make sure to replace <GCP_REGION>, <PROJECT_ID>, <IMAGE_NAME>, and <TAG>
-        image: us-central1-docker.pkg.dev/superb-tendril-454116-i5/cloud-run-images/demo:latest
+        image: us-central1-docker.pkg.dev/superb-tendril-454116-i5/cloud-run-images/demo:main
         ports:
         - containerPort: 8080 # The port your Spring Boot app listens on.
         # It's a good practice to add readiness and liveness probes for health checks.
