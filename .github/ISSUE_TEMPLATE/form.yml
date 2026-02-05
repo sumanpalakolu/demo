@@ -1,0 +1,74 @@
+name: "🛡️ Firewall Rule Request"
+description: "Submit a request to open network paths between hosts."
+title: "[FW-REQ]: "
+labels: ["firewall-pending"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Instructions
+        Please ensure the hostnames provided match exactly what is recorded in **NetBox**.
+  
+  - type: input
+    id: submitter_name
+    attributes:
+      label: "Name of Submitter"
+      placeholder: "”
+    validations:
+      required: true
+
+  - type: input
+    id: source_host
+    attributes:
+      label: "Source Hostname"
+      placeholder: "e.g., srv-web-01"
+      description: "The hostname of the machine initiating the connection."
+    validations:
+      required: true
+
+  - type: input
+    id: destination_host
+    attributes:
+      label: "Destination Hostname"
+      placeholder: "e.g., db-prod-01"
+      description: "The hostname of the machine receiving the connection."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: "Protocol"
+      options:
+        - TCP
+        - UDP
+        - ICMP
+    validations:
+      required: true
+
+  - type: input
+    id: port
+    attributes:
+      label: "Port Number(s)"
+      placeholder: "e.g., 443, 8080"
+      description: "Enter a single port or a comma-separated list."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: direction
+    attributes:
+      label: "Directional Flow"
+      options:
+        - One-way (Source to Destination)
+        - Bi-directional (Return traffic included)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: validation_confirm
+    attributes:
+      label: "Pre-check"
+      options:
+        - label: "I have verified these hostnames exist in NetBox."
+          required: true
