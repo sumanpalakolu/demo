@@ -1,0 +1,30 @@
+name: 📡 Dispatch to Backend
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  dispatch:
+    # Logic: Only trigger if a MEMBER (Admin) comments "/approve"
+    if: contains(github.event.comment.body, '/approve') && github.event.comment.author_association == 'MEMBER'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📝 Parse Issue Form
+        uses: peter-murray/issue-forms-body-parser@v2
+        id: parse
+        with:
+          issue_id: ${{ github.event.issue.number }}
+
+      - name: 🚀 Send to Private Repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          # This token must be a PAT stored in Secrets with 'repo' scope
+          token: ${{ secrets.CROSS_REPO_PAT }} 
+          repository: your-org/private-automation-backend
+          event-type: firewall-trigger
+          client-payload: |
+            {
+              "issue_number": "${{ github.event.issue.number }}",
+              "form_data": ${{ steps.parse.outputs.payload }},
+              "requestor": "${{ github.event.issue.user.login }}"
+            }
