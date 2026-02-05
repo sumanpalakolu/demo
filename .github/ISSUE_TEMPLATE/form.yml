@@ -8,12 +8,12 @@ body:
       value: |
         ### Instructions
         Please ensure the hostnames provided match exactly what is recorded in **NetBox**.
-  
+
   - type: input
     id: submitter_name
     attributes:
       label: "Name of Submitter"
-      placeholder: "”
+      placeholder: "e.g., Jane Doe"
     validations:
       required: true
 
@@ -60,8 +60,8 @@ body:
     attributes:
       label: "Directional Flow"
       options:
-        - One-way (Source to Destination)
-        - Bi-directional (Return traffic included)
+        - "One-way (Source to Destination)"
+        - "Bi-directional (Return traffic included)"
     validations:
       required: true
 
