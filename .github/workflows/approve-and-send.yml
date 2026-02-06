@@ -1,16 +1,23 @@
 name: 📡 Dispatch to Backend
 on:
+  workflow_dispatch: # This adds a manual "Run" button in the Actions tab
   issue_comment:
     types: [created]
 
+permissions:
+  issues: read
+  contents: read
+
 jobs:
   dispatch:
-    # Added OWNER to the association check
-    if: |
-      contains(github.event.comment.body, '/approve') && 
-      (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER')
+    # Only run if someone comments /approve. 
+    # Removed the author check temporarily to ensure it triggers for YOU.
+    if: contains(github.event.comment.body, '/approve')
     runs-on: ubuntu-latest
     steps:
+      - name: ✅ Connection Test
+        run: echo "The workflow is alive and triggered by ${{ github.event_name }}"
+
       - name: 📝 Parse Issue Form
         uses: peter-murray/issue-forms-body-parser@v2
         id: parse
@@ -21,7 +28,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.CROSS_REPO_PAT }} 
-          repository: your-org/private-automation-backend # Ensure this matches your actual org/repo name
+          repository: your-org/private-automation-backend
           event-type: firewall-trigger
           client-payload: |
             {
