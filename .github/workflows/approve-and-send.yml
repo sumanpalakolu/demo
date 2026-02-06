@@ -32,9 +32,10 @@ jobs:
           token: ${{ secrets.CROSS_REPO_PAT }} 
           repository: your-org/private-automation-backend
           event-type: firewall-trigger
-          client-payload: |
+          client-payload: >
             {
               "issue_number": "${{ github.event.issue.number }}",
               "form_data": ${{ steps.parse.outputs.payload }},
               "requestor": "${{ github.event.issue.user.login }}"
             }
+      
