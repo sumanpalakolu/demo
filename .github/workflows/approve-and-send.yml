@@ -12,7 +12,9 @@ jobs:
   dispatch:
     # Only run if someone comments /approve. 
     # Removed the author check temporarily to ensure it triggers for YOU.
-    if: contains(github.event.comment.body, '/approve')
+    if: |
+      contains(github.event.comment.body, '/approve') && 
+      (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER')
     runs-on: ubuntu-latest
     steps:
       - name: ✅ Connection Test
