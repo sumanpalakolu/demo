@@ -30,7 +30,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.CROSS_REPO_PAT }} 
-          repository: your-org/private-automation-backend
+          repository: sumanpalakolu/aws-demo
           event-type: firewall-trigger
           client-payload: >
             {
